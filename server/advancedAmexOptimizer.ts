@@ -15,7 +15,7 @@ export interface AirlineRedemptionRate {
   internationalBusiness: number;
   transferPartners: string[];
   bookingUrl: string;
-  pointsPerDollar: number; // typical value
+  pointValueCents: number; // typical cents-per-point valuation
 }
 
 export interface RedemptionOption {
@@ -24,8 +24,8 @@ export interface RedemptionOption {
   cashPrice: number; // in cents
   pointsRequired: number;
   pointsValue: number; // ¢ per point
-  totalCost: number; // in cents (cash + points value)
-  savings: number; // in cents
+  totalCost: number; // effective resource cost in cents (cash + point valuation)
+  savings: number; // in cents compared to all-cash price
   savingsPercent: number;
   bookingUrl: string;
   recommendation: string;
@@ -59,7 +59,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 100000,
     transferPartners: ["Singapore Airlines", "ANA", "Lufthansa"],
     bookingUrl: "https://www.united.com/en/us/",
-    pointsPerDollar: 1.3,
+    pointValueCents: 1.3,
   },
   American: {
     airline: "American",
@@ -69,7 +69,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 90000,
     transferPartners: ["British Airways", "Cathay Pacific", "Qatar"],
     bookingUrl: "https://www.aa.com/",
-    pointsPerDollar: 1.4,
+    pointValueCents: 1.4,
   },
   Delta: {
     airline: "Delta",
@@ -79,7 +79,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 110000,
     transferPartners: ["Virgin Atlantic", "Air France", "KLM"],
     bookingUrl: "https://www.delta.com/",
-    pointsPerDollar: 1.2,
+    pointValueCents: 1.2,
   },
   "Air China": {
     airline: "Air China",
@@ -89,7 +89,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 80000,
     transferPartners: ["Oneworld Alliance"],
     bookingUrl: "https://www.airchina.com/",
-    pointsPerDollar: 1.1,
+    pointValueCents: 1.1,
   },
   "China Eastern": {
     airline: "China Eastern",
@@ -99,7 +99,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 75000,
     transferPartners: ["SkyTeam Alliance"],
     bookingUrl: "https://www.ceair.com/",
-    pointsPerDollar: 1.15,
+    pointValueCents: 1.15,
   },
   "China Southern": {
     airline: "China Southern",
@@ -109,7 +109,7 @@ export const AIRLINE_RATES: Record<Airline, AirlineRedemptionRate> = {
     internationalBusiness: 70000,
     transferPartners: ["SkyTeam Alliance"],
     bookingUrl: "https://www.csair.com/",
-    pointsPerDollar: 1.2,
+    pointValueCents: 1.2,
   },
 };
 
@@ -211,7 +211,8 @@ export function calculateAllRedemptionOptions(
     // Option 2: Pure Points
     const basePoints = getBaseRedemptionPoints(airline, isInternational, cabinClass);
     const adjustedPoints = adjustForSeason(basePoints, season);
-    const pointsValue = (cashPrice / adjustedPoints) * 100; // ¢ per point
+    const pointsValue = adjustedPoints === 0 ? 0 : cashPrice / adjustedPoints;
+    const typicalPointCost = adjustedPoints * airlineRate.pointValueCents;
 
     options.push({
       airline,
@@ -219,9 +220,9 @@ export function calculateAllRedemptionOptions(
       cashPrice,
       pointsRequired: adjustedPoints,
       pointsValue,
-      totalCost: adjustedPoints * (pointsValue / 100),
-      savings: cashPrice - adjustedPoints * (pointsValue / 100),
-      savingsPercent: ((cashPrice - adjustedPoints * (pointsValue / 100)) / cashPrice) * 100,
+      totalCost: typicalPointCost,
+      savings: cashPrice - typicalPointCost,
+      savingsPercent: ((cashPrice - typicalPointCost) / cashPrice) * 100,
       bookingUrl: `${airlineRate.bookingUrl}?origin=${origin}&destination=${destination}&awards=true`,
       recommendation: isGoodPointsValue(pointsValue)
         ? "Excellent value - use points!"
@@ -232,7 +233,10 @@ export function calculateAllRedemptionOptions(
     // Option 3: Hybrid (if user has enough points)
     if (userAmexPoints > 0) {
       const hybridPoints = Math.min(userAmexPoints, adjustedPoints);
-      const hybridCash = cashPrice - (hybridPoints * pointsValue) / 100;
+      const redeemedValue = hybridPoints * pointsValue;
+      const hybridCash = Math.max(0, cashPrice - Math.round(redeemedValue));
+      const hybridPointCost = hybridPoints * airlineRate.pointValueCents;
+      const hybridTotalCost = hybridCash + hybridPointCost;
 
       options.push({
         airline,
@@ -240,9 +244,9 @@ export function calculateAllRedemptionOptions(
         cashPrice: hybridCash,
         pointsRequired: hybridPoints,
         pointsValue,
-        totalCost: hybridCash + (hybridPoints * pointsValue) / 100,
-        savings: (hybridPoints * pointsValue) / 100,
-        savingsPercent: ((hybridPoints * pointsValue) / 100 / cashPrice) * 100,
+        totalCost: hybridTotalCost,
+        savings: cashPrice - hybridTotalCost,
+        savingsPercent: ((cashPrice - hybridTotalCost) / cashPrice) * 100,
         bookingUrl: `${airlineRate.bookingUrl}?origin=${origin}&destination=${destination}&hybrid=true`,
         recommendation: `Use ${hybridPoints.toLocaleString()} points + $${(hybridCash / 100).toFixed(2)} cash`,
         rank: 0,
@@ -252,7 +256,9 @@ export function calculateAllRedemptionOptions(
     // Option 4: Transfer Partner (if available)
     if (airlineRate.transferPartners.length > 0) {
       const partnerPoints = Math.round(adjustedPoints * 0.9); // Usually 10% cheaper via partners
-      const partnerValue = (cashPrice / partnerPoints) * 100;
+      const partnerValue = partnerPoints === 0 ? 0 : cashPrice / partnerPoints;
+      const partnerPointCost =
+        partnerPoints * (airlineRate.pointValueCents * 0.9);
 
       options.push({
         airline,
@@ -260,9 +266,9 @@ export function calculateAllRedemptionOptions(
         cashPrice,
         pointsRequired: partnerPoints,
         pointsValue: partnerValue,
-        totalCost: partnerPoints * (partnerValue / 100),
-        savings: cashPrice - partnerPoints * (partnerValue / 100),
-        savingsPercent: ((cashPrice - partnerPoints * (partnerValue / 100)) / cashPrice) * 100,
+        totalCost: partnerPointCost,
+        savings: cashPrice - partnerPointCost,
+        savingsPercent: ((cashPrice - partnerPointCost) / cashPrice) * 100,
         bookingUrl: `${airlineRate.bookingUrl}?origin=${origin}&destination=${destination}&partner=true`,
         recommendation: `Transfer to ${airlineRate.transferPartners[0]} for better value`,
         rank: 0,
@@ -301,7 +307,7 @@ export function calculateAllRedemptionOptions(
  * Determines if points value is good (> 1.2¢ per point)
  */
 export function isGoodPointsValue(pointsValue: number): boolean {
-  return pointsValue >= 120; // >= 1.2 cents per point
+  return pointsValue >= 1.2; // >= 1.2 cents per point
 }
 
 /**
@@ -313,15 +319,13 @@ export function generateBookingUrl(
   destination: string,
   departureDate: string
 ): string {
-  const baseUrl = option.bookingUrl;
-  const params = new URLSearchParams({
-    origin,
-    destination,
-    departureDate,
-    cabin: option.method === "cash" ? "economy" : "award",
-  });
+  const url = new URL(option.bookingUrl);
+  url.searchParams.set("origin", origin);
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("departureDate", departureDate);
+  url.searchParams.set("cabin", option.method === "cash" ? "economy" : "award");
 
-  return `${baseUrl}?${params.toString()}`;
+  return url.toString();
 }
 
 /**
@@ -334,6 +338,10 @@ export function calculateSavingsComparison(
   savingsVsCash: number;
   savingsPercent: number;
 } {
+  if (options.length === 0) {
+    throw new Error("No redemption options provided");
+  }
+
   const cheapest = options.reduce((min, opt) =>
     opt.totalCost < min.totalCost ? opt : min
   );

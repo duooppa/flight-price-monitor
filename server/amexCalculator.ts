@@ -8,8 +8,8 @@ export interface AmexRedemptionOption {
   cashPrice: number; // in cents
   pointsRequired: number;
   pointsValue: number; // value per point in cents
-  totalValue: number; // in cents
-  savings: number; // in cents
+  totalValue: number; // effective cost in cents after accounting for points value
+  savings: number; // in cents compared to paying full cash price
   savingsPercent: number;
   recommendation: string;
 }
@@ -47,6 +47,20 @@ export const AMEX_REDEMPTION_RATES = {
   },
 };
 
+const CENTS_PER_POINT: Record<
+  "domestic" | "international",
+  Record<"economy" | "business", number>
+> = {
+  domestic: {
+    economy: 1.2,
+    business: 1.2,
+  },
+  international: {
+    economy: 1.33,
+    business: 1.5,
+  },
+};
+
 /**
  * Calculates the value per point based on cash price and points required
  */
@@ -55,14 +69,17 @@ export function calculatePointsValue(
   pointsRequired: number
 ): number {
   if (pointsRequired === 0) return 0;
-  return (cashPrice / pointsRequired) * 100; // return value in cents per point
+  // cashPrice is provided in cents, so dividing by points gives the
+  // effective cents-per-point rate for this redemption.
+  return cashPrice / pointsRequired;
 }
 
 /**
  * Determines if a redemption is valuable (typically > 1 cent per point)
  */
 export function isGoodRedemption(pointsValue: number): boolean {
-  return pointsValue >= 100; // >= 1 cent per point
+  // A redemption is generally considered worthwhile if it clears ~1¢/point.
+  return pointsValue >= 1;
 }
 
 /**
@@ -73,11 +90,12 @@ export function estimatePointsRequired(
   routeType: "domestic" | "international" = "international",
   cabinClass: "economy" | "business" = "economy"
 ): number {
-  // Typical redemption rates: 1 point = 0.8-1.5 cents
-  // For international economy: typically 30,000-50,000 points for $400-600 flights
-  
-  const baseRate = routeType === "domestic" ? 0.008 : 0.01; // cents per point
-  return Math.round(cashPrice / baseRate);
+  const centsPerPoint = CENTS_PER_POINT[routeType][cabinClass];
+  const estimated = Math.round(cashPrice / centsPerPoint);
+
+  // Ensure the estimate never drops below the typical published award charts.
+  const chartBaseline = AMEX_REDEMPTION_RATES[routeType][cabinClass];
+  return Math.max(chartBaseline, estimated);
 }
 
 /**
@@ -91,6 +109,7 @@ export function calculateRedemptionOptions(
 ): AmexCalculatorResult {
   const pointsRequired = estimatePointsRequired(cashPrice, routeType, cabinClass);
   const pointsValue = calculatePointsValue(cashPrice, pointsRequired);
+  const typicalCentsPerPoint = CENTS_PER_POINT[routeType][cabinClass];
 
   const options: AmexRedemptionOption[] = [];
 
@@ -107,17 +126,15 @@ export function calculateRedemptionOptions(
   });
 
   // Option 2: Pure Points
-  const pointsOnlyValue = isGoodRedemption(pointsValue)
-    ? cashPrice
-    : cashPrice * 0.8; // If bad rate, value is lower
+  const pointsOnlyValue = pointsRequired * typicalCentsPerPoint;
   options.push({
     method: "points",
     cashPrice,
     pointsRequired,
     pointsValue,
     totalValue: pointsOnlyValue,
-    savings: pointsOnlyValue - cashPrice,
-    savingsPercent: ((pointsOnlyValue - cashPrice) / cashPrice) * 100,
+    savings: cashPrice - pointsOnlyValue,
+    savingsPercent: ((cashPrice - pointsOnlyValue) / cashPrice) * 100,
     recommendation: isGoodRedemption(pointsValue)
       ? "Excellent redemption value - use points!"
       : "Below average redemption rate - consider paying cash",
@@ -126,17 +143,20 @@ export function calculateRedemptionOptions(
   // Option 3: Hybrid (if points value is good, suggest partial redemption)
   if (isGoodRedemption(pointsValue) && userPoints && userPoints > 0) {
     const hybridPoints = Math.min(userPoints, pointsRequired);
-    const hybridCash = cashPrice - (hybridPoints * pointsValue) / 100;
-    const hybridValue = cashPrice; // Total value is same, but uses points
+    const redeemedValue = hybridPoints * pointsValue;
+    const hybridCash = Math.max(0, cashPrice - Math.round(redeemedValue));
+    const hybridPointCost = hybridPoints * typicalCentsPerPoint;
+    const hybridTotalCost = hybridCash + hybridPointCost;
+    const hybridSavings = cashPrice - hybridTotalCost;
 
     options.push({
       method: "hybrid",
       cashPrice: hybridCash,
       pointsRequired: hybridPoints,
       pointsValue,
-      totalValue: hybridValue,
-      savings: (hybridPoints * pointsValue) / 100,
-      savingsPercent: ((hybridPoints * pointsValue) / 100 / cashPrice) * 100,
+      totalValue: hybridTotalCost,
+      savings: hybridSavings,
+      savingsPercent: (hybridSavings / cashPrice) * 100,
       recommendation: `Use ${hybridPoints.toLocaleString()} points + $${(hybridCash / 100).toFixed(2)} cash`,
     });
   }
@@ -144,7 +164,7 @@ export function calculateRedemptionOptions(
   // Determine best option
   let bestOption = options[0];
   for (const option of options) {
-    if (option.totalValue > bestOption.totalValue) {
+    if (option.savings > bestOption.savings) {
       bestOption = option;
     }
   }
@@ -199,7 +219,7 @@ export function compareRedemptionRates(
  */
 export function getRedemptionRecommendation(
   pointsValue: number,
-  historicalAverage: number = 100
+  historicalAverage: number = 1
 ): {
     recommendation: "use_points" | "use_cash" | "neutral";
     reason: string;
@@ -209,17 +229,17 @@ export function getRedemptionRecommendation(
   if (ratio > 1.2) {
     return {
       recommendation: "use_points",
-      reason: `Excellent value: ${(pointsValue / 100).toFixed(2)}¢ per point (${((ratio - 1) * 100).toFixed(0)}% above average)`,
+      reason: `Excellent value: ${pointsValue.toFixed(2)}¢ per point (${((ratio - 1) * 100).toFixed(0)}% above average)`,
     };
   } else if (ratio < 0.8) {
     return {
       recommendation: "use_cash",
-      reason: `Poor value: ${(pointsValue / 100).toFixed(2)}¢ per point (${((1 - ratio) * 100).toFixed(0)}% below average)`,
+      reason: `Poor value: ${pointsValue.toFixed(2)}¢ per point (${((1 - ratio) * 100).toFixed(0)}% below average)`,
     };
   } else {
     return {
       recommendation: "neutral",
-      reason: `Average value: ${(pointsValue / 100).toFixed(2)}¢ per point`,
+      reason: `Average value: ${pointsValue.toFixed(2)}¢ per point`,
     };
   }
 }
@@ -229,17 +249,17 @@ export function getRedemptionRecommendation(
  */
 export function calculateBreakEvenPrice(
   pointsRequired: number,
-  targetPointsValue: number = 100 // 1 cent per point
+  targetPointsValue: number = 1 // 1 cent per point
 ): number {
   // Break-even: pointsRequired * targetPointsValue = cashPrice
-  return (pointsRequired * targetPointsValue) / 100;
+  return pointsRequired * targetPointsValue;
 }
 
 /**
  * Formats Amex points value for display
  */
 export function formatPointsValue(pointsValue: number): string {
-  return `${(pointsValue / 100).toFixed(2)}¢ per point`;
+  return `${pointsValue.toFixed(2)}¢ per point`;
 }
 
 /**
