@@ -40,7 +40,10 @@ export function shouldTriggerAlert(
   }
 
   // Also trigger if price dropped significantly (5%+) from previous
-  if (previousPrice && isPriceChangeSignificant(currentPrice, previousPrice, 5)) {
+  if (
+    previousPrice !== null &&
+    isPriceChangeSignificant(currentPrice, previousPrice, 5)
+  ) {
     const changePercent = ((currentPrice - previousPrice) / previousPrice) * 100;
     if (changePercent < 0) {
       return {
@@ -87,7 +90,7 @@ export function createAlertEvent(
 export function formatAlertMessage(event: PriceAlertEvent): string {
   const currentPriceStr = `$${(event.currentPrice / 100).toFixed(2)}`;
   const targetPriceStr = `$${(event.targetPrice / 100).toFixed(2)}`;
-  const savings = event.targetPrice - event.currentPrice;
+  const savings = Math.max(0, event.targetPrice - event.currentPrice);
   const savingsStr = `$${(savings / 100).toFixed(2)}`;
 
   const message = `
@@ -188,22 +191,22 @@ export function calculateAlertStats(events: PriceAlertEvent[]): {
     };
   }
 
-  const totalSavings = events.reduce(
-    (sum, e) => sum + (e.targetPrice - e.currentPrice),
-    0
-  );
+  const totalSavings = events.reduce((sum, event) => {
+    const savings = Math.max(0, event.targetPrice - event.currentPrice);
+    return sum + savings;
+  }, 0);
   const averageSavings = totalSavings / events.length;
 
   const bestDeal = events.reduce((best, current) =>
-    current.targetPrice - current.currentPrice >
-    best.targetPrice - best.currentPrice
+    Math.max(0, current.targetPrice - current.currentPrice) >
+    Math.max(0, best.targetPrice - best.currentPrice)
       ? current
       : best
   );
 
   const worstDeal = events.reduce((worst, current) =>
-    current.targetPrice - current.currentPrice <
-    worst.targetPrice - worst.currentPrice
+    Math.max(0, current.targetPrice - current.currentPrice) <
+    Math.max(0, worst.targetPrice - worst.currentPrice)
       ? current
       : worst
   );
