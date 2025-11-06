@@ -124,11 +124,10 @@ export default function Home() {
 
                 <div className="space-y-2">
                   <Button
-                    onClick={handleSearch}
+                    onClick={() => navigate("/monitor-search")}
                     className="w-full bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 text-white font-bold py-3 flex items-center justify-center gap-2 rounded-lg"
-                    disabled={!origin || !destination || !departureDate}
                   >
-                    Search Flights
+                    Search Real Flights
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                   <Button

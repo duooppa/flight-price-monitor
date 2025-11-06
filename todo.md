@@ -90,3 +90,13 @@
 - [ ] Create checkpoint for production
 - [ ] Deploy to production
 - [ ] Set up monitoring and logging
+
+## Phase 14: Real Flight Data Integration
+- [x] Set up Amadeus API free tier account and credentials
+- [x] Implement Amadeus flight search API integration
+- [x] Create flight data transformation and normalization
+- [x] Implement direct vs connecting flight classification
+- [x] Add caching for API responses
+- [x] Integrate real data with search UI
+- [x] Test with real flight searches (JFK-PVG, LAX-SHA, SFO-SHA)
+- [x] Optimize API performance and error handling

@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Monitor from "./pages/Monitor";
 import MonitorAdvanced from "./pages/MonitorAdvanced";
+import MonitorWithSearch from "./pages/MonitorWithSearch";
 import Dashboard from "./pages/Dashboard";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/monitor" component={Monitor} />
       <Route path="/monitor-advanced" component={MonitorAdvanced} />
+      <Route path="/monitor-search" component={MonitorWithSearch} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

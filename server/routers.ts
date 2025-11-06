@@ -6,9 +6,8 @@ import { z } from "zod";
 import { createFlightSearch, getFlightsBySearch, getFlightWithDetails, getPriceHistory, getUserSavedRoutes, saveSavedRoute, getUserPriceAlerts, createPriceAlert } from "./db";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
-  // Flight search and monitoring
+  
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -30,12 +29,42 @@ export const appRouter = router({
         adults: z.number().int().min(1).default(1),
         cabinClass: z.string().default("economy"),
       }))
-      .mutation(async ({ input, ctx }) => {
-        const search = await createFlightSearch({
-          userId: ctx.user?.id,
-          ...input,
-        });
-        return { success: true };
+      .query(async ({ input }) => {
+        try {
+          const { searchFlights } = await import("./amadeus");
+          const flights = await searchFlights(
+            input.origin,
+            input.destination,
+            input.departureDate,
+            input.returnDate,
+            input.adults
+          );
+          
+          const directFlights = flights.filter((f: any) => f.isDirectFlight);
+          const connectingFlights = flights.filter((f: any) => !f.isDirectFlight);
+          
+          return {
+            success: true,
+            flights,
+            directFlights,
+            connectingFlights,
+            total: flights.length,
+            directCount: directFlights.length,
+            connectingCount: connectingFlights.length,
+          };
+        } catch (error) {
+          console.error("Flight search error:", error);
+          return {
+            success: false,
+            flights: [],
+            directFlights: [],
+            connectingFlights: [],
+            total: 0,
+            directCount: 0,
+            connectingCount: 0,
+            error: "Failed to search flights",
+          };
+        }
       }),
 
     getResults: publicProcedure
