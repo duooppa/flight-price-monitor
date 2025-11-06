@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Plane, TrendingDown, Bell } from "lucide-react";
+import { ArrowRight, Plane, TrendingDown, Bell, Zap, Award } from "lucide-react";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useState } from "react";
@@ -24,29 +24,37 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      {/* United Airlines Header */}
+      <header className="border-b border-blue-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Plane className="w-6 h-6 text-blue-600" />
-            <span className="font-semibold text-lg text-slate-900">{APP_TITLE}</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-700 to-blue-900 rounded-lg flex items-center justify-center">
+              <Plane className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-lg text-blue-900">{APP_TITLE}</div>
+              <div className="text-xs text-blue-600 font-semibold">Powered by United Airlines</div>
+            </div>
           </div>
           <nav className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/monitor")}>
+            <Button variant="ghost" onClick={() => navigate("/monitor")} className="text-blue-900 hover:text-blue-700">
               Monitor
             </Button>
             {user && (
-              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+              <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-blue-900 hover:text-blue-700">
                 Dashboard
               </Button>
             )}
             {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600">{user.name}</span>
+              <div className="flex items-center gap-3">
+                <div className="text-sm">
+                  <div className="font-semibold text-blue-900">{user.name}</div>
+                  <div className="text-xs text-blue-600">MileagePlus Member</div>
+                </div>
               </div>
             ) : (
-              <Button asChild>
+              <Button asChild className="bg-blue-700 hover:bg-blue-800 text-white">
                 <a href={getLoginUrl()}>Sign In</a>
               </Button>
             )}
@@ -59,55 +67,64 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: Search Interface */}
           <div>
-            <h1 className="text-5xl font-bold text-slate-900 mb-4">
-              Real-time Flight Prices
+            <div className="mb-4">
+              <span className="inline-block bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">
+                ✈️ UNITED AIRLINES EXCLUSIVE
+              </span>
+            </div>
+            <h1 className="text-5xl font-bold text-blue-900 mb-4">
+              Smart Flight Pricing
             </h1>
-            <p className="text-xl text-slate-600 mb-8">
-              Monitor US-China flight prices in real-time. Track direct and connecting flights, get instant alerts on price drops.
+            <p className="text-xl text-blue-700 mb-2">
+              Monitor US-China flight prices with Amex points optimization
+            </p>
+            <p className="text-lg text-blue-600 mb-8">
+              Find the best deals, maximize your rewards, and travel smarter with United MileagePlus
             </p>
 
             {/* Search Card */}
-            <Card className="p-6 border-0 shadow-lg">
+            <Card className="p-6 border-0 shadow-lg bg-white">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-blue-900 mb-2">
                       From
                     </label>
                     <Input
                       placeholder="JFK, LAX, SFO..."
                       value={origin}
                       onChange={(e) => setOrigin(e.target.value.toUpperCase())}
-                      className="text-center font-semibold"
+                      className="text-center font-bold text-blue-900 border-blue-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-blue-900 mb-2">
                       To
                     </label>
                     <Input
                       placeholder="PVG, SHA, CAN..."
                       value={destination}
                       onChange={(e) => setDestination(e.target.value.toUpperCase())}
-                      className="text-center font-semibold"
+                      className="text-center font-bold text-blue-900 border-blue-200"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-blue-900 mb-2">
                     Departure Date
                   </label>
                   <Input
                     type="date"
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
+                    className="border-blue-200"
                   />
                 </div>
 
                 <Button
                   onClick={handleSearch}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 text-white font-bold py-3 flex items-center justify-center gap-2 rounded-lg"
                   disabled={!origin || !destination || !departureDate}
                 >
                   Search Flights
@@ -118,7 +135,7 @@ export default function Home() {
 
             {/* Quick Routes */}
             <div className="mt-6">
-              <p className="text-sm text-slate-600 mb-3">Popular routes:</p>
+              <p className="text-sm font-semibold text-blue-900 mb-3">Popular Routes:</p>
               <div className="flex flex-wrap gap-2">
                 {[
                   { from: "JFK", to: "PVG", label: "New York → Shanghai" },
@@ -133,7 +150,7 @@ export default function Home() {
                       setOrigin(route.from);
                       setDestination(route.to);
                     }}
-                    className="text-xs"
+                    className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
                   >
                     {route.label}
                   </Button>
@@ -145,44 +162,76 @@ export default function Home() {
           {/* Right: Features */}
           <div className="space-y-4">
             <FeatureCard
-              icon={<TrendingDown className="w-6 h-6 text-green-600" />}
+              icon={<TrendingDown className="w-6 h-6 text-blue-700" />}
               title="Price Tracking"
-              description="Monitor price changes in real-time with historical trend analysis"
+              description="Real-time monitoring with historical trend analysis and price drop alerts"
             />
             <FeatureCard
-              icon={<Plane className="w-6 h-6 text-blue-600" />}
-              title="Smart Filtering"
-              description="Easily filter between direct flights and connecting flights"
+              icon={<Award className="w-6 h-6 text-yellow-600" />}
+              title="Amex Points Optimizer"
+              description="Calculate the best way to redeem Amex points for maximum value"
+            />
+            <FeatureCard
+              icon={<Zap className="w-6 h-6 text-blue-700" />}
+              title="Upgrade Opportunities"
+              description="Get notified of seat upgrade chances and cabin class improvements"
             />
             <FeatureCard
               icon={<Bell className="w-6 h-6 text-orange-600" />}
-              title="Price Alerts"
-              description="Get notified instantly when prices drop below your target"
+              title="Smart Alerts"
+              description="Instant notifications for price drops, delays, and redemption opportunities"
             />
             <FeatureCard
-              icon={<Plane className="w-6 h-6 text-purple-600" />}
+              icon={<Plane className="w-6 h-6 text-blue-700" />}
               title="Saved Routes"
-              description="Save your favorite routes for quick access and monitoring"
+              description="Save favorite routes and track prices automatically"
             />
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="bg-white border-t border-slate-200">
+      <section className="bg-gradient-to-r from-blue-700 to-blue-900 text-white">
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="grid grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-3xl font-bold text-blue-600">1000+</div>
-              <p className="text-slate-600 mt-2">Daily Price Updates</p>
+              <div className="text-4xl font-bold text-yellow-300">1000+</div>
+              <p className="text-blue-100 mt-2">Daily Price Updates</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-600">50+</div>
-              <p className="text-slate-600 mt-2">US-China Routes</p>
+              <div className="text-4xl font-bold text-yellow-300">50+</div>
+              <p className="text-blue-100 mt-2">US-China Routes</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-600">Real-time</div>
-              <p className="text-slate-600 mt-2">Live Monitoring</p>
+              <div className="text-4xl font-bold text-yellow-300">Real-time</div>
+              <p className="text-blue-100 mt-2">Live Monitoring</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Amex Integration Section */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border-2 border-blue-200">
+          <div className="flex items-center gap-3 mb-4">
+            <Award className="w-8 h-8 text-yellow-600" />
+            <h2 className="text-3xl font-bold text-blue-900">Amex Points Redemption</h2>
+          </div>
+          <p className="text-blue-700 mb-6 text-lg">
+            Maximize your American Express points with our intelligent redemption calculator. Compare cash prices vs points value and find the best way to book your flights.
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <div className="text-sm text-blue-600 font-semibold mb-2">Cash Price</div>
+              <div className="text-2xl font-bold text-blue-900">$580</div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <div className="text-sm text-blue-600 font-semibold mb-2">Points Required</div>
+              <div className="text-2xl font-bold text-blue-900">45,000</div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <div className="text-sm text-blue-600 font-semibold mb-2">Points Value</div>
+              <div className="text-2xl font-bold text-yellow-600">$0.013/pt</div>
             </div>
           </div>
         </div>
@@ -201,12 +250,12 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <Card className="p-4 border border-slate-200 hover:border-slate-300 transition-colors">
+    <Card className="p-4 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all bg-white">
       <div className="flex gap-3">
         <div className="flex-shrink-0">{icon}</div>
         <div>
-          <h3 className="font-semibold text-slate-900">{title}</h3>
-          <p className="text-sm text-slate-600 mt-1">{description}</p>
+          <h3 className="font-bold text-blue-900">{title}</h3>
+          <p className="text-sm text-blue-600 mt-1">{description}</p>
         </div>
       </div>
     </Card>
