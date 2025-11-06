@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, flights, flightLegs, flightSegments, priceHistory, savedRoutes, priceAlerts, flightSearches } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,122 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Flight search and flight queries
+export async function getFlightsBySearch(searchId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(flights).where(eq(flights.searchId, searchId));
+}
+
+export async function getFlightWithDetails(flightId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const flight = await db.select().from(flights).where(eq(flights.id, flightId)).limit(1);
+  if (!flight.length) return null;
+  
+  const legs = await db.select().from(flightLegs).where(eq(flightLegs.flightId, flightId));
+  const segments = await Promise.all(
+    legs.map(leg => db.select().from(flightSegments).where(eq(flightSegments.legId, leg.id)))
+  );
+  
+  return { flight: flight[0], legs, segments };
+}
+
+export async function getPriceHistory(flightId: number, days: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return await db.select().from(priceHistory)
+    .where(and(eq(priceHistory.flightId, flightId), gte(priceHistory.recordedAt, since)))
+    .orderBy(priceHistory.recordedAt);
+}
+
+export async function getUserSavedRoutes(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(savedRoutes).where(eq(savedRoutes.userId, userId));
+}
+
+export async function getUserPriceAlerts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(priceAlerts).where(eq(priceAlerts.userId, userId));
+}
+
+export async function createFlightSearch(search: {
+  userId?: number;
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string;
+  adults: number;
+  cabinClass: string;
+  sessionToken?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(flightSearches).values({
+    userId: search.userId,
+    origin: search.origin,
+    destination: search.destination,
+    departureDate: search.departureDate,
+    returnDate: search.returnDate,
+    adults: search.adults,
+    cabinClass: search.cabinClass,
+    sessionToken: search.sessionToken,
+    status: "pending",
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+  });
+  
+  return result;
+}
+
+export async function insertFlight(flight: {
+  searchId: number;
+  itineraryId: string;
+  price: number;
+  currency: string;
+  isDirectFlight: number;
+  stopCount: number;
+  totalDuration?: number;
+  outboundDuration?: number;
+  returnDuration?: number;
+  airline?: string;
+  deepLink?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(flights).values(flight);
+}
+
+export async function recordPriceChange(flightId: number, price: number, currency: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(priceHistory).values({ flightId, price, currency });
+}
+
+export async function saveSavedRoute(userId: number, route: {
+  origin: string;
+  destination: string;
+  originName?: string;
+  destinationName?: string;
+  name?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(savedRoutes).values({ userId, ...route });
+}
+
+export async function createPriceAlert(userId: number, alert: {
+  origin: string;
+  destination: string;
+  targetPrice: number;
+  currency: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(priceAlerts).values({ userId, ...alert });
+}
