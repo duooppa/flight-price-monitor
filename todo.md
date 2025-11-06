@@ -70,14 +70,21 @@
 - [ ] Build hotel+flight combo optimization
 - [ ] Add best redemption timing analysis
 
-## Phase 11: Enhanced Dashboard & Analytics
+## Phase 11: Advanced Amex Optimization
+- [x] Design multi-airline redemption rate database
+- [x] Implement airline-specific transfer partner logic
+- [x] Create intelligent cost comparison algorithm
+- [x] Build real booking link integration
+- [x] Add seasonal and cabin-class pricing adjustments
+
+## Phase 12: Enhanced Dashboard & Analytics
 - [ ] Create comprehensive travel intelligence dashboard
 - [ ] Add spending analytics and ROI tracking
 - [ ] Implement savings calculator
 - [ ] Build trip planning recommendations
 - [ ] Add loyalty program insights
 
-## Phase 12: Deployment & Launch
+## Phase 13: Deployment & Launch
 - [ ] Final testing and quality assurance
 - [ ] Performance optimization
 - [ ] Create checkpoint for production
